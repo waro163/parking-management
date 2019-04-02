@@ -1,4 +1,5 @@
 from datetime import datetime
+import time,random
 from werkzeug.security import generate_password_hash, check_password_hash
 from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
 from flask import current_app, request, url_for
@@ -67,52 +68,25 @@ class Role(db.Model):
         return '<Role %r>' % self.name
 
 
-class Follow(db.Model):
-    __tablename__ = 'follows'
-    follower_id = db.Column(db.Integer, db.ForeignKey('users.id'),
-                            primary_key=True)
-    followed_id = db.Column(db.Integer, db.ForeignKey('users.id'),
-                            primary_key=True)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
-
 
 class User(UserMixin, db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(64), unique=True, index=True)
-    username = db.Column(db.String(64), unique=True, index=True)
-    role_id = db.Column(db.Integer, db.ForeignKey('roles.id'))
+    phone_number = db.Column(db.String(64),index=True)
+    username = db.Column(db.String(64), index=True)
     password_hash = db.Column(db.String(128))
-    confirmed = db.Column(db.Boolean, default=False)
-    phone_number = db.Column(db.String(64))
+    token = db.Column(db.String(6))#发送给用户的邮件确认验证码或手机确认验证码
+    email_confirmed = db.Column(db.Boolean, default=False)
+    phone_number_confirmed = db.Column(db.Boolean, default=False)
     location = db.Column(db.String(64))
     about_me = db.Column(db.Text())
-    member_since = db.Column(db.DateTime(), default=datetime.utcnow)
-    last_seen = db.Column(db.DateTime(), default=datetime.utcnow)
     avatar_url = db.Column(db.String(128))#头像
     gender = db.Column(db.Integer)#性别
-    open_id = db.Column(db.String(32))#微信中的用户识别码
     session_id = db.Column(db.String(32),unique=True)#服务器与客户端的临时session
-    posts = db.relationship('Post', backref='author', lazy='dynamic')#文章
-    followed = db.relationship('Follow',
-                               foreign_keys=[Follow.follower_id],
-                               backref=db.backref('follower', lazy='joined'),
-                               lazy='dynamic',
-                               cascade='all, delete-orphan')
-    followers = db.relationship('Follow',
-                                foreign_keys=[Follow.followed_id],
-                                backref=db.backref('followed', lazy='joined'),
-                                lazy='dynamic',
-                                cascade='all, delete-orphan')
-    comments = db.relationship('Comment', backref='author', lazy='dynamic')
+    role_id = db.Column(db.Integer, db.ForeignKey('roles.id'))
+    orders = db.relationship('Order',backref = 'user')
 
-    @staticmethod
-    def add_self_follows():
-        for user in User.query.all():
-            if not user.is_following(user):
-                user.follow(user)
-                db.session.add(user)
-                db.session.commit()
 
     def __init__(self, **kwargs):
         super(User, self).__init__(**kwargs)
@@ -121,7 +95,6 @@ class User(UserMixin, db.Model):
                 self.role = Role.query.filter_by(name='Administrator').first()
             if self.role is None:
                 self.role = Role.query.filter_by(default=True).first()
-        self.follow(self)
 
     @property
     def password(self):
@@ -135,16 +108,15 @@ class User(UserMixin, db.Model):
         return check_password_hash(self.password_hash, password)
 
     def generate_confirmation_token(self, expiration=3600):
-        s = Serializer(current_app.config['SECRET_KEY'], expiration)
-        return s.dumps({'confirm': self.id}).decode('utf-8')
+        _token = ''
+        for i in range(6):
+            _token += str(random.randint(0,9))
+        self.token = _token
+        db.session.add(self)
+        return _token
 
     def confirm(self, token):
-        s = Serializer(current_app.config['SECRET_KEY'])
-        try:
-            data = s.loads(token.encode('utf-8'))
-        except:
-            return False
-        if data.get('confirm') != self.id:
+        if self.token != token:
             return False
         self.confirmed = True
         db.session.add(self)
@@ -205,33 +177,6 @@ class User(UserMixin, db.Model):
         self.avatar_url = url
         db.session.add(self)
 
-    def follow(self, user):
-        if not self.is_following(user):
-            f = Follow(follower=self, followed=user)
-            db.session.add(f)
-
-    def unfollow(self, user):
-        f = self.followed.filter_by(followed_id=user.id).first()
-        if f:
-            db.session.delete(f)
-
-    def is_following(self, user):
-        if user.id is None:
-            return False
-        return self.followed.filter_by(
-            followed_id=user.id).first() is not None
-
-    def is_followed_by(self, user):
-        if user.id is None:
-            return False
-        return self.followers.filter_by(
-            follower_id=user.id).first() is not None
-
-    @property
-    def followed_posts(self):
-        return Post.query.join(Follow, Follow.followed_id == Post.author_id)\
-            .filter(Follow.follower_id == self.id)
-
     def to_json(self):
         json_user = {
             'url': url_for('api.get_user', id=self.id,_external=True),
@@ -245,21 +190,12 @@ class User(UserMixin, db.Model):
         }
         return json_user
 
-    def generate_auth_token(self, expiration):
+    def generate_session_token(self, expiration=3600):
         s = Serializer(current_app.config['SECRET_KEY'],
                        expires_in=expiration)
         self.session_id = s.dumps({'id': self.id}).decode('utf-8')
         db.session.add(self)
         return self.session_id
-
-    @staticmethod
-    def verify_auth_token(token):
-        s = Serializer(current_app.config['SECRET_KEY'])
-        try:
-            data = s.loads(token)
-        except:
-            return None
-        return User.query.get(data['id'])
 
     def __repr__(self):
         return '<User %r>' % self.username
@@ -279,75 +215,46 @@ login_manager.anonymous_user = AnonymousUser
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-
-class Post(db.Model):
-    __tablename__ = 'posts'
-    id = db.Column(db.Integer, primary_key=True)
-    body = db.Column(db.Text)
-    timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
-    disabled = db.Column(db.Boolean)
-    author_id = db.Column(db.Integer, db.ForeignKey('users.id'))
-    comments = db.relationship('Comment', backref='post', lazy='dynamic')
-
-    @staticmethod
-    def on_changed_body(target, value, oldvalue, initiator):
-        pass
-
-    def to_json(self):
-        json_post = {
-            'url': url_for('api.get_post', id=self.id),
-            'body': self.body,
-            'timestamp': self.timestamp,
-            'author_name': self.author.username,
-            'comments_url': url_for('api.get_post_comments', id=self.id),
-            'comment_count': self.comments.count()
-        }
-        return json_post
-
-    @staticmethod
-    def from_json(json_post):
-        body = json_post.get('body')
-        if body is None or body == '':
-            raise ValidationError('post does not have a body')
-        return Post(body=body)
-
-db.event.listen(Post.body, 'set', Post.on_changed_body)
-
-
-class Comment(db.Model):
-    __tablename__ = 'comments'
-    id = db.Column(db.Integer, primary_key=True)
-    body = db.Column(db.Text)
-    timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
-    disabled = db.Column(db.Boolean)
-    author_id = db.Column(db.Integer, db.ForeignKey('users.id'))
-    post_id = db.Column(db.Integer, db.ForeignKey('posts.id'))
-
-    @staticmethod
-    def on_changed_body(target, value, oldvalue, initiator):
-        pass
-
-    def to_json(self):
-        json_comment = {
-            'url': url_for('api.get_comment', id=self.id),
-            'post_url': url_for('api.get_post', id=self.post_id),
-            'body': self.body,
-            'timestamp': self.timestamp,
-            'author_url': url_for('api.get_user', id=self.author_id),
-        }
-        return json_comment
-
-    @staticmethod
-    def from_json(json_comment):
-        body = json_comment.get('body')
-        if body is None or body == '':
-            raise ValidationError('comment does not have a body')
-        return Comment(body=body)
-
-db.event.listen(Comment.body, 'set', Comment.on_changed_body)
-
-
-class Category(db.Model):#文章分类
-    __tablename__ = 'categorys'
+class Order(db.Model):#订单
+    __tablename__ = 'orders'
     id = db.Column(db.Integer,primary_key=True)
     tag = db.Column(db.String(32),nullable=True)
+    parkin_time = db.Column(db.DateTime(), default=datetime.utcnow)
+    parkout_time = db.Column(db.DateTime())
+    parktotal_time = db.Column(db.Float)
+    pay_money = db.Column(db.Float)
+    is_paied = db.Column(db.Boolean,default=False)
+    rating = db.Column(db.String(64))
+    parking_id = db.Column(db.Integer,db.ForeignKey('parkings.id'))
+    user_id = db.Column(db.Integer,db.ForeignKey('users.id'))
+
+class ParkingS(db.Model):#停车位
+    __tablename__ = 'parkings'
+    id = db.Column(db.Integer, primary_key=True)
+    longtitude = db.Column(db.Float ,nullable=False)
+    latitude = db.Column(db.Float , nullable=False)
+    last_seen = db.Column(db.DateTime(),default=datetime.utcnow())
+    park_status = db.Column(db.Boolean,default=False)
+    online_status = db.Column(db.Boolean,default=True)
+    orders = db.relationship('Order',backref='parking')
+
+    def lock(self):
+        self.park_status = False
+        db.session.add(self)
+    def unlock(self):
+        self.park_status = True
+        db.session.add(self)
+    def ping(self):
+        self.last_seen = datetime.utcnow()
+        self.online_status = True
+        db.session.add(self)
+        return self.park_status
+    def to_json(self):
+        parking = {
+            'park_status' : self.park_status,
+            'online_status' : self.online_status,
+            'latitude' : self.latitude,
+            'longtitude' : self.longtitude
+        }
+        return parking
+

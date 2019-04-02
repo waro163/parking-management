@@ -5,6 +5,7 @@ from functools import wraps
 from ..models import User,AnonymousUser
 from . import api
 from .errors import unauthorized, alert
+import json
 
 # auth = HTTPBasicAuth()
 #
@@ -34,15 +35,12 @@ from .errors import unauthorized, alert
 #     if not g.current_user.is_anonymous and \
 #             not g.current_user.confirmed:
 #         return forbidden('Unconfirmed account')
+
 @api.before_request
 def before_request():
     g.request = request
     g.current_user = AnonymousUser()
-
-@api.route('/tokens/', methods=['POST'])
-def get_token():
-    if g.current_user.is_anonymous or g.token_used:
-        return unauthorized('Invalid credentials')
-    return jsonify({'token': g.current_user.generate_auth_token(
-        expiration=3600), 'expiration': 3600})
+    # print('api before_request:', g.request.form)
+    g.head = json.loads(request.form.get('head'))
+    g.body = json.loads(request.form.get('body'))
 

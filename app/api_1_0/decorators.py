@@ -17,12 +17,13 @@ def login_require(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         try:
-            _session_id = g.request.json['body'].get('SessionId')
+            _session_id = g.body.get('SessionId')
         except Exception:
             return alert(10002,'SessionId not found in post data')
         else:
             user = User.query.filter_by(session_id=_session_id).first()
             if not user:
                 return alert(20002,'invalid sessionId, ')
+            g.current_user = user
         return f(*args, **kwargs)
     return decorated

@@ -18,6 +18,7 @@ class Config:
     APPSECRET = os.getenv('APPSECRET')
     TOKEN = os.getenv('TOKEN',consts.WechatToken)
     AES_KEY = os.getenv('AES_KEY',consts.AES_Key)
+    EMAIL_PATTERN = os.getenv('EMAIL_PATTERN',consts.EMAIL_PATTERN)
 
     @classmethod
     def check_portrait_folder(cls):

@@ -1,49 +1,67 @@
 # -*- coding: utf-8 -*-
-from flask import jsonify, request, current_app, url_for
+from flask import jsonify, request, current_app, url_for,g
 from . import api
-from ..models import User, Post
+from ..models import User
+from ..email import send_email
 from .errors import  alert
-import requests, json
-import os
-from consts import Wxcode2SessionUrl
-from ..utils import WXBizDataCrypt
+import json
+import re
 from .decorators import login_require
 from .. import db
 
 @api.route('/user/register',methods=['GET','POST'])
-def get_user():
-    # print(request.json)
+def register():
     try:
-        _code = request.json['body'].get('code')
-        _iv = request.json['body'].get('iv')
-        _encryptedData = request.json['body'].get('encryptedData')
-    except Exception:
+        _account = g.body.get('account')
+        _password = g.body.get('password')
+        _token = g.body.get('token')
+    except Exception as e:
         return alert(10001,'Register data not found in post data')
-
-    _wxcode2sessionurl =  Wxcode2SessionUrl.format(APPID=current_app.config['APPID'],SECRET=current_app.config['APPSECRET'],JSCODE=_code)
-    _wxlogincode = requests.get(_wxcode2sessionurl)
-    r = json.loads(_wxlogincode.text)
-    if r.get('errcode') != 0:
-        return alert(30001,'cannot get the session_key and openid from wechat server')
-    _session_key = r.get('session_key')
-    _openid = r.get('openid')
-    _pc = WXBizDataCrypt(current_app.config.get('APPID'),_session_key)
-    _res = _pc.decrypt(_encryptedData,_iv)
-    if not _res:
-        return alert(30002, 'Invalid encrypte data')
-    print('user inf has:',dir(_res))
-    user = User.query.filter_by(openid = _openid).first()
+    user = User.query.filter_by(email = _account).first()
     if not user:
-        _location = '{country},{province},{city}'.format(country=_res.get('country'),province=_res.get('province'),city=_res.get('city'))
-        user_new = User(location= _location,avatar_url=_res.get('avatarUrl'),open_id=_openid,gender=_res.get('gender'))
-        _session_id = user_new.generate_auth_token()
-        db.session.commit()
-        return jsonify({'head':{},'info':{},'body':{'sessionId':_session_id}})
-    else:
-        _session_id = user.generate_auth_token()
-        db.session.commit()
-        return jsonify({'head':{},'info':{},'body':{'sessionId':_session_id}})
+        return alert(20003,'please get token firstly')
+    if not user.confirm(_token):
+        return alert(20004,'your token is wrong, please check again')
+    user.password = _password
+    db.session.add(user)
+    _session_id = user.generate_session_token()
+    db.session.commit()
+    return jsonify({'head':{'resultCode':'1'},'status':{'code':'', 'message': ''},\
+                    'body':{'sessionId':_session_id, 'account':_account}})
 
-@api.route('/user/',methods=['GET','POST'])
+@api.route('/user/gettoken',methods=['GET','POST'])
+def gettoken():
+    _account =  g.body.get('account')
+    if not _account:
+        return alert(10001,'account number not found in post data')
+    _email_pattern = re.compile(current_app.config.get('EMAIL_PATTERN'))
+    if not _email_pattern.match(_account):
+        return alert(20001,'please check your eamil number, it must be xxx@yy.com|cn')
+    _user = User.query.filter_by(email = _account)
+    if _user:
+        if _user.email_confirmed:
+            return alert(20002,'you had register the email account and confirm it')
+        else:
+            _token = _user.generate_confirmation_token()
+            send_email(_account,'Confirm Your Account','email/token',token = _token)
+    else:
+        user_new = User(email = _account)
+        db.session.add(user_new)
+        _token = user_new.generate_confirmation_token()
+        send_email(_account,'Confirm Your Account','email/token',token = _token)
+    db.session.commit()
+    return jsonify({'head':{'resultCode':'1'},'status':{'code':'','message': ''},'body':{}})
+
+@api.route('/user/login',methods = ['GET','POST'])
 def login():
-    return jsonify({'head':{},'info':{},'body':{}})
+    _account = g.body.get('account')
+    _password = g.body.get('password')
+    user = User.query.filter_by(email = _account)
+    if not user:
+        return alert(20005,'your email account is not exit, please sign in firstly')
+    if not user.verify_password(_password):
+        return alert(20006,'your password is wrong, please check again')
+    _session_id = user.generate_session_token()
+    db.session.commit()
+    return jsonify({'head':{'resultCode':'1'},'status':{'code':'','message': ''},\
+                    'body':{'sessionId':_session_id, 'account':_account}})
