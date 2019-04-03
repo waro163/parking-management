@@ -36,6 +36,7 @@ def parkings_ping():
     })
 
 @api.route('/parkings/unlock',methods = ['POST'])
+@login_require
 def parking_unlock():
     _parking_id = g.body.get('parking_id')
     _parking = ParkingS.query.get(_parking_id)
@@ -54,6 +55,7 @@ def parking_unlock():
     return alert(20007,'the parking space had been unlocked by other people')
 
 @api.route('/parkings/lock',methods = ['POST'])
+@login_require
 def parking_lock():
     _parking_id = g.body.get('parking_id')
     _order_id = g.body.get('order_id')
@@ -65,17 +67,27 @@ def parking_lock():
         return alert(10010,'order number is not exist')
     _parking.lock()
     _price_minute = _parking.get_price()
-
+    _order.finalize_order(_price_minute)
+    db.session.commit()
     return jsonify({
         'head': {'resultCode': '1'},
         'status': {'code': '', 'message': ''},
-        'body': {'parking_status': 0}
+        'body': {_order.to_json().update(_parking.to_json())}
     })
 
 @api.route('parkings/rating',methods = ['POST'])
+@login_require
 def parking_rating():
+    _order_id = g.body.get('order_id')
+    _star = g.body.get('score')
+    _comment = g.body.get('comment')
+    _order = Order.query.get(_order_id)
+    if not _order:
+        return alert(10010,'order number is not exist')
+    _order.rate_order(_star,_comment)
+    db.session.commit()
     return jsonify({
         'head': {'resultCode': '1'},
         'status': {'code': '', 'message': ''},
-        'body': {'parking_status': 0}
+        'body': {}
     })

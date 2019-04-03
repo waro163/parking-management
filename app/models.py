@@ -85,7 +85,7 @@ class User(UserMixin, db.Model):
     gender = db.Column(db.Integer)#性别
     session_id = db.Column(db.String(32),unique=True)#服务器与客户端的临时session
     role_id = db.Column(db.Integer, db.ForeignKey('roles.id'))
-    orders = db.relationship('Order',backref = 'user')
+    orders = db.relationship('Order',backref = 'user',lazy = 'dynamic')
 
 
     def __init__(self, **kwargs):
@@ -246,12 +246,15 @@ class Order(db.Model):#订单
 
     def to_json(self):
         order = {
+            'order_id':self.id,
             'parkin_time':self.parkin_time,
             'parkout_time':self.parkout_time,
             'money':self.pay_money,
             'is_paied':self.is_paied,
-
+            'score':self.score,
+            'comment':self.comment
         }
+        return order
 
     def __repr__(self):
         return '<Order %r>' % self.id
@@ -265,7 +268,7 @@ class ParkingS(db.Model):#停车位
     last_seen = db.Column(db.DateTime(),default=datetime.now)
     park_status = db.Column(db.Boolean,default=False)
     online_status = db.Column(db.Boolean,default=True)
-    orders = db.relationship('Order',backref='parking')
+    orders = db.relationship('Order',backref='parking',lazy = 'dynamic')
 
     def lock(self):
         self.park_status = False
@@ -291,6 +294,7 @@ class ParkingS(db.Model):#停车位
 
     def to_json(self):
         parking = {
+            'parking_id' : self.id,
             'park_status' : self.park_status,
             'online_status' : self.online_status,
             'latitude' : self.latitude,

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-from flask import jsonify, request, g, url_for, current_app
+from flask import jsonify, g, url_for, current_app
 from .. import db
-from ..models import  Permission
+from ..models import  Order
 from . import api
 from .decorators import permission_required,login_require
 from .errors import forbidden
@@ -9,5 +9,22 @@ from .errors import forbidden
 @api.route('/orders', methods = ['POST'])
 @login_require
 def get_orders():
+    _orders = g.current_user.orders.all()
+    return jsonify({
+        'head':{'resultCode':'1'},
+        'status':{'code':'','message': ''},
+        'body':{_order.to_json() for _order in _orders}
+    })
 
-    return jsonify({'head':{'resultCode':'1'},'status':{'code':'','message': ''},'body':{}})
+@api.route('order/pay',methods = ['POST'])
+@login_require
+def order_pay():
+    _order_id = g.body.get('order_id')
+    _order = Order.query.get(_order_id)
+    _order.pay_order()
+    db.session.commit()
+    return jsonify({
+        'head': {'resultCode': '1'},
+        'status': {'code': '', 'message': ''},
+        'body': {_order.to_json()}
+    })
