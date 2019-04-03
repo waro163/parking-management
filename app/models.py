@@ -218,22 +218,51 @@ def load_user(user_id):
 class Order(db.Model):#订单
     __tablename__ = 'orders'
     id = db.Column(db.Integer,primary_key=True)
-    tag = db.Column(db.String(32),nullable=True)
-    parkin_time = db.Column(db.DateTime(), default=datetime.utcnow)
+    parkin_time = db.Column(db.DateTime(), default=datetime.now)
     parkout_time = db.Column(db.DateTime())
     parktotal_time = db.Column(db.Float)
     pay_money = db.Column(db.Float)
     is_paied = db.Column(db.Boolean,default=False)
-    rating = db.Column(db.String(64))
+    score = db.Column(db.Integer)
+    comment = db.Column(db.String(128))
     parking_id = db.Column(db.Integer,db.ForeignKey('parkings.id'))
     user_id = db.Column(db.Integer,db.ForeignKey('users.id'))
+
+    def finalize_order(self,price):
+        self.parkout_time = datetime.now()
+        self.parktotal_time = (self.parkout_time-self.parkin_time).seconds/60.0
+        self.pay_money = price * self.parktotal_time
+        db.session.add(self)
+
+    def pay_order(self):
+        self.is_paied = True
+        db.session.add(self)
+        return self.is_paied
+
+    def rate_order(self,score,comment):
+        self.score = score
+        self.comment = comment
+        db.session.add(self)
+
+    def to_json(self):
+        order = {
+            'parkin_time':self.parkin_time,
+            'parkout_time':self.parkout_time,
+            'money':self.pay_money,
+            'is_paied':self.is_paied,
+
+        }
+
+    def __repr__(self):
+        return '<Order %r>' % self.id
 
 class ParkingS(db.Model):#停车位
     __tablename__ = 'parkings'
     id = db.Column(db.Integer, primary_key=True)
-    longtitude = db.Column(db.Float ,nullable=False)
+    longitude = db.Column(db.Float ,nullable=False)
     latitude = db.Column(db.Float , nullable=False)
-    last_seen = db.Column(db.DateTime(),default=datetime.utcnow())
+    price_minute = db.Column(db.Float, nullable=False)
+    last_seen = db.Column(db.DateTime(),default=datetime.now)
     park_status = db.Column(db.Boolean,default=False)
     online_status = db.Column(db.Boolean,default=True)
     orders = db.relationship('Order',backref='parking')
@@ -241,20 +270,34 @@ class ParkingS(db.Model):#停车位
     def lock(self):
         self.park_status = False
         db.session.add(self)
+        return self.park_status
+
+    def islocked(self):
+        return not self.park_status
+
     def unlock(self):
         self.park_status = True
         db.session.add(self)
+        return self.park_status
+
     def ping(self):
         self.last_seen = datetime.utcnow()
         self.online_status = True
         db.session.add(self)
         return self.park_status
+
+    def get_price(self):
+        return self.price_minute
+
     def to_json(self):
         parking = {
             'park_status' : self.park_status,
             'online_status' : self.online_status,
             'latitude' : self.latitude,
-            'longtitude' : self.longtitude
+            'longitude' : self.longitude,
+            'price_minute' : self.price_minute
         }
         return parking
 
+    def __repr__(self):
+        return '<Parking %r>' % self.id
