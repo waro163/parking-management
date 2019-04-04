@@ -1,5 +1,5 @@
 <p>Dear Mr or Madom,</p>
-<p>Welcome to <b>Parkinn Space</b>!</p>
+<p>Welcome to <b>Parking Space</b>!</p>
 <p>To confirm your account please Please entry the token before you register.</p>
 <p>Your token is:</p>
 <p>{{ token }}</p>

@@ -17,7 +17,7 @@ def login_require(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         try:
-            _session_id = g.body.get('SessionId')
+            _session_id = g.body.get('session_id')
         except Exception:
             return alert(10002,'SessionId not found in post data')
         else:

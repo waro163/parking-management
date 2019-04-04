@@ -118,7 +118,7 @@ class User(UserMixin, db.Model):
     def confirm(self, token):
         if self.token != token:
             return False
-        self.confirmed = True
+        self.email_confirmed = True
         db.session.add(self)
         return True
 
@@ -269,6 +269,23 @@ class ParkingS(db.Model):#停车位
     park_status = db.Column(db.Boolean,default=False)
     online_status = db.Column(db.Boolean,default=True)
     orders = db.relationship('Order',backref='parking',lazy = 'dynamic')
+
+    @staticmethod
+    def insert_parkings(file_name):
+        with open(file_name) as f:
+            for _each_line in f:
+                format_line = _each_line.strip()
+                if not format_line.startswith('#'):
+                    data_line = format_line.split('#')[0]
+                    _lat,_lon,_pri = [ data.strip() for data in data_line.split(',')]
+                    if _lon and _lat and _pri:
+                        _lon = float(_lon)
+                        _lat = float(_lat)
+                        _pri = float(_pri)
+                        _parking = ParkingS(longitude=_lon,latitude=_lat,price_minute=_pri)
+                        db.session.add(_parking)
+            db.session.commit()
+        f.close()
 
     def lock(self):
         self.park_status = False

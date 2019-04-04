@@ -11,11 +11,10 @@ from .. import db
 
 @api.route('/user/register',methods=['GET','POST'])
 def register():
-    try:
-        _account = g.body.get('account')
-        _password = g.body.get('password')
-        _token = g.body.get('token')
-    except Exception as e:
+    _account = g.body.get('account')
+    _password = g.body.get('password')
+    _token = g.body.get('token')
+    if not (_account and _password and _token):
         return alert(10001,'Register data not found in post data')
     user = User.query.filter_by(email = _account).first()
     if not user:
@@ -27,7 +26,7 @@ def register():
     _session_id = user.generate_session_token()
     db.session.commit()
     return jsonify({'head':{'resultCode':'1'},'status':{'code':'', 'message': ''},\
-                    'body':{'sessionId':_session_id, 'account':_account}})
+                    'body':{'session_id':_session_id, 'account':_account}})
 
 @api.route('/user/gettoken',methods=['GET','POST'])
 def gettoken():
@@ -37,7 +36,7 @@ def gettoken():
     _email_pattern = re.compile(current_app.config.get('EMAIL_PATTERN'))
     if not _email_pattern.match(_account):
         return alert(20001,'please check your eamil number, it must be xxx@yy.com|cn')
-    _user = User.query.filter_by(email = _account)
+    _user = User.query.filter_by(email = _account).first()
     if _user:
         if _user.email_confirmed:
             return alert(20002,'you had register the email account and confirm it')
@@ -50,13 +49,13 @@ def gettoken():
         _token = user_new.generate_confirmation_token()
         send_email(_account,'Confirm Your Account','email/token',token = _token)
     db.session.commit()
-    return jsonify({'head':{'resultCode':'1'},'status':{'code':'','message': ''},'body':{}})
+    return jsonify({'head':{'resultCode':'1'},'status':{'code':'','message': ''},'body':{'msg':'please check your email to fill your token'}})
 
 @api.route('/user/login',methods = ['GET','POST'])
 def login():
     _account = g.body.get('account')
     _password = g.body.get('password')
-    user = User.query.filter_by(email = _account)
+    user = User.query.filter_by(email = _account).first()
     if not user:
         return alert(20005,'your email account is not exit, please sign in firstly')
     if not user.verify_password(_password):

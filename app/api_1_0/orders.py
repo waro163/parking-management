@@ -13,18 +13,18 @@ def get_orders():
     return jsonify({
         'head':{'resultCode':'1'},
         'status':{'code':'','message': ''},
-        'body':{_order.to_json() for _order in _orders}
+        'body':{'orders':[_order.to_json() for _order in _orders]}
     })
 
 @api.route('order/pay',methods = ['POST'])
 @login_require
 def order_pay():
-    _order_id = g.body.get('order_id')
+    _order_id = int(g.body.get('order_id'))
     _order = Order.query.get(_order_id)
     _order.pay_order()
     db.session.commit()
     return jsonify({
         'head': {'resultCode': '1'},
         'status': {'code': '', 'message': ''},
-        'body': {_order.to_json()}
+        'body': {'order':_order.to_json()}
     })
