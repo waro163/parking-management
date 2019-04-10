@@ -4,7 +4,7 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 
 
 class Config:
-    SECRET_KEY = os.environ.get('SECRET_KEY') or consts.SECRECT_KEY
+    SECRET_KEY = os.environ.get('SECRET_KEY', consts.SECRECT_KEY)
     MAIL_SERVER = os.environ.get('MAIL_SERVER', consts.MAIL_SERVER)
     MAIL_PORT = int(os.environ.get('MAIL_PORT', consts.MAIL_PORT))
     MAIL_USE_TLS = os.environ.get('MAIL_USE_TLS', consts.MAIL_USE_TLS)
@@ -19,6 +19,9 @@ class Config:
     TOKEN = os.getenv('TOKEN',consts.WechatToken)
     AES_KEY = os.getenv('AES_KEY',consts.AES_Key)
     EMAIL_PATTERN = os.getenv('EMAIL_PATTERN',consts.EMAIL_PATTERN)
+    UPLOAD_ROOT_FOLDER = os.path.join(basedir, os.getenv('UPLOAD_ROOT_FOLDER', consts.UPLOAD_ROOT_FOLDER))
+    PHOTO_SUB_FOLDER = os.getenv('PHOTO_SUB_FOLDER',consts.PHOTO_SUB_FOLDER)
+    ALLOWED_PHOTO_EXTENSIONS  = os.getenv('ALLOWED_PHOTO_EXTENSIONS',consts.ALLOWED_PHOTO_EXTENSIONS)
 
     @classmethod
     def check_portrait_folder(cls):
@@ -27,9 +30,10 @@ class Config:
 
     @staticmethod
     def init_app(app):
-        # if not os.path.isdir(Config.PORTRAIT_FOLDER):
-        #     os.mkdir(Config.PORTRAIT_FOLDER)
-        pass
+        _photo_folder = os.path.join(Config.UPLOAD_ROOT_FOLDER,Config.PHOTO_SUB_FOLDER)
+        if not os.path.isdir(_photo_folder):
+            os.mkdir(_photo_folder)
+        # pass
 
 
 class DevelopmentConfig(Config):
