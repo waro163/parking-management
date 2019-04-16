@@ -42,11 +42,13 @@ def gettoken():
             return alert(20002,'you had register the email account and confirm it')
         else:
             _token = _user.generate_confirmation_token()
-            send_async_email_by_celery(_account,'Confirm Your Account','email/token',token = _token)
+            send_async_email_by_celery.delay(_account, 'Confirm Your Account', 'email/token', token=_token)
+            # send_async_email_by_celery.apply_async(args=[_account,'Confirm Your Account','email/token'],kwargs={'token':_token})
     else:
         user_new = User(email = _account)
         db.session.add(user_new)
         _token = user_new.generate_confirmation_token()
+        db.session.commit()
         send_async_email_by_celery(_account,'Confirm Your Account','email/token',token = _token)
     db.session.commit()
     return jsonify({'head':{'resultCode':'1'},'status':{'code':'','message': ''},'body':{'msg':'please check your email to fill your token'}})

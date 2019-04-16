@@ -10,7 +10,7 @@ mail = Mail()
 db = SQLAlchemy()
 bootstrap = Bootstrap()
 login_manager = LoginManager()
-celery = Celery()
+celery = Celery(broker='redis://localhost:6379/0')
 
 def create_app(config_name='default'):
     app = Flask(__name__)
