@@ -16,9 +16,8 @@ def permission_required(permission):
 def login_require(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        try:
-            _session_id = g.body.get('session_id')
-        except Exception:
+        _session_id = g.body.get('session_id')
+        if not _session_id:
             return alert(10002,'SessionId not found in post data')
         else:
             user = User.query.filter_by(session_id=_session_id).first()
