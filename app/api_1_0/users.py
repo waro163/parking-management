@@ -42,14 +42,14 @@ def gettoken():
             return alert(20002,'you had register the email account and confirm it')
         else:
             _token = _user.generate_confirmation_token()
-            send_email(_account,'Confirm Your Account','email/token',token = _token)
+            # send_email(_account,'Confirm Your Account','email/token',token = _token)
     else:
         user_new = User(email = _account)
         db.session.add(user_new)
         _token = user_new.generate_confirmation_token()
-        send_email(_account,'Confirm Your Account','email/token',token = _token)
+        # send_email(_account,'Confirm Your Account','email/token',token = _token)
     db.session.commit()
-    return jsonify({'head':{'resultCode':'1'},'status':{'code':'','message': ''},'body':{'msg':'please check your email to fill your token'}})
+    return jsonify({'head':{'resultCode':'1'},'status':{'code':'','message': ''},'body':{'token':_token}})
 
 @api.route('/user/login',methods = ['GET','POST'])
 def login():
