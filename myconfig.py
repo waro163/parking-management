@@ -14,6 +14,8 @@ class Config:
     FLASKY_MAIL_SENDER = os.environ.get('MAIL_USERNAME',consts.MAIL_USERNAME)
     FLASKY_ADMIN = os.environ.get('FLASKY_ADMIN',consts.ADMIN)
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    CELERY_BROKER_URL = 'redis://localhost:6379/0'
+    CELERY_RESULT_BACKEND = 'redix://localhost:6379/0'
     APPID = os.getenv('APPID')
     APPSECRET = os.getenv('APPSECRET')
     TOKEN = os.getenv('TOKEN',consts.WechatToken)

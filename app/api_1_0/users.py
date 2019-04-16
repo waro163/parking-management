@@ -2,7 +2,7 @@
 from flask import jsonify, request, current_app, url_for,g
 from . import api
 from ..models import User
-from ..email import send_email
+from ..email import send_email_by_thread,send_async_email_by_celery
 from .errors import  alert
 import json
 import re
@@ -42,12 +42,12 @@ def gettoken():
             return alert(20002,'you had register the email account and confirm it')
         else:
             _token = _user.generate_confirmation_token()
-            send_email(_account,'Confirm Your Account','email/token',token = _token)
+            send_email_by_thread(_account,'Confirm Your Account','email/token',token = _token)
     else:
         user_new = User(email = _account)
         db.session.add(user_new)
         _token = user_new.generate_confirmation_token()
-        send_email(_account,'Confirm Your Account','email/token',token = _token)
+        send_email_by_thread(_account,'Confirm Your Account','email/token',token = _token)
     db.session.commit()
     return jsonify({'head':{'resultCode':'1'},'status':{'code':'','message': ''},'body':{'msg':'please check your email to fill your token'}})
 
