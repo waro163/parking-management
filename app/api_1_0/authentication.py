@@ -40,7 +40,14 @@ import json
 def before_request():
     g.request = request
     g.current_user = AnonymousUser()
+    g.head = {}
+    g.body = {}
     # print('api before_request:', g.request.form)
-    g.head = json.loads(request.form.get('head'))
-    g.body = json.loads(request.form.get('body'))
+    _request_head = request.form.get('head')
+    _request_body = request.form.get('body')
+    print(_request_head,_request_body)
+    if _request_head:
+        g.head = json.loads(_request_head)
+    if _request_body:
+        g.body = json.loads(_request_body)
 
