@@ -42,7 +42,8 @@ def before_request():
     g.current_user = AnonymousUser()
     g.head = {}
     g.body = {}
-    # print('api before_request:', g.request.form)
+    print('api before_request:', request.data)
+    print('api before_request:', request.json)
     _request_head = request.form.get('head')
     _request_body = request.form.get('body')
     print(_request_head,_request_body)

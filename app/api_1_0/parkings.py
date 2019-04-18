@@ -10,9 +10,12 @@ from ..utils import getRectRange
 @api.route('/parkings', methods = ['POST'])
 @login_require
 def get_parkings():
-    _latitude = float(g.body.get('latitude'))
-    _longitude = float(g.body.get('longitude'))
-    _distance = float(g.body.get('distance',5))
+    try:
+        _latitude = float(g.body.get('latitude'))
+        _longitude = float(g.body.get('longitude'))
+        _distance = float(g.body.get('distance',5))
+    except Exception as e:
+        return alert(10002, 'the latitude/longitude/distance is wrong')
     maxLat, minLat, maxLon, minLon = getRectRange.GetRectRange(_latitude,_longitude,_distance)
     # print(maxLat,minLat,maxLon,minLon)
     parkings = ParkingS.query.filter(ParkingS.latitude >= minLat, ParkingS.latitude < maxLat, ParkingS.longitude >= minLon, ParkingS.longitude < maxLon).all()
@@ -24,10 +27,13 @@ def get_parkings():
 
 @api.route('/parkings/ping', methods = ['GET','POST'])
 def parkings_ping():
-    _parking_id = int(g.body.get('parking_id'))
+    try:
+        _parking_id = int(g.body.get('parking_id'))
+    except Exception as e:
+        return alert(10002, 'the parking id is wrong')
     _parking = ParkingS.query.get(_parking_id)
     if not _parking:
-        alert(10002,'the parking id is wrong')
+        return alert(10002,'the parking id is wrong')
     _parking_status = _parking.ping()
     db.session.commit()
     return jsonify({
@@ -39,7 +45,10 @@ def parkings_ping():
 @api.route('/parkings/unlock',methods = ['POST'])
 @login_require
 def parking_unlock():
-    _parking_id = int(g.body.get('parking_id'))
+    try:
+        _parking_id = int(g.body.get('parking_id'))
+    except Exception as e:
+        return alert(10002, 'parking id is wrong')
     _parking = ParkingS.query.get(_parking_id)
     if not _parking:
         return alert(10002,'the parking number is not exist')
@@ -58,8 +67,11 @@ def parking_unlock():
 @api.route('/parkings/lock',methods = ['POST'])
 @login_require
 def parking_lock():
-    _parking_id = int(g.body.get('parking_id'))
-    _order_id = int(g.body.get('order_id'))
+    try:
+        _parking_id = int(g.body.get('parking_id'))
+        _order_id = int(g.body.get('order_id'))
+    except Exception as e:
+        return alert(10002, 'the parking_id/order_id is wrong')
     _parking = ParkingS.query.get(_parking_id)
     _order = Order.query.get(_order_id)
     if not _parking:
@@ -83,9 +95,12 @@ def parking_lock():
 @api.route('parkings/rating',methods = ['POST'])
 @login_require
 def parking_rating():
-    _order_id = int(g.body.get('order_id'))
-    _star = int(g.body.get('score'))
-    _comment = g.body.get('comment')
+    try:
+        _order_id = int(g.body.get('order_id'))
+        _star = int(g.body.get('score'))
+        _comment = g.body.get('comment')
+    except Exception as e:
+        return alert(10002, 'order_id/score is wrong')
     _order = Order.query.get(_order_id)
     if not _order:
         return alert(10010,'order number is not exist')

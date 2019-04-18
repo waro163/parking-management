@@ -30,7 +30,10 @@ def get_orders():
 @api.route('order/pay',methods = ['POST'])
 @login_require
 def order_pay():
-    _order_id = int(g.body.get('order_id'))
+    try:
+        _order_id = int(g.body.get('order_id'))
+    except Exception as e:
+        return alert(10002, 'the order_id is wrong')
     _order = Order.query.get(_order_id)
     _order.pay_order()
     db.session.commit()
