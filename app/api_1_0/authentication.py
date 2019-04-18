@@ -44,11 +44,12 @@ def before_request():
     g.body = {}
     print('request.data:', request.data)
     print('request.json:', request.json)
-    _request_head = request.json.get('head')
-    _request_body = request.json.get('body')
-    print(_request_head,_request_body)
-    if _request_head:
+    try:
+        _request_head = request.json.get('head')
+        _request_body = request.json.get('body')
+    except Exception as e:
+        print("before request",e)
+    else:
+        print(_request_head,_request_body)
         g.head = _request_head
-    if _request_body:
         g.body = _request_body
-
