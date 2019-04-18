@@ -128,3 +128,13 @@ def parking_rating():
         'status': {'code': '', 'message': ''},
         'body': {}
     })
+
+@api.route('parkings/status',methods = ['POST'])
+@login_require
+def parkings_status():
+    all_parkings = ParkingS.query.all()
+    return jsonify({
+        'head': {'resultCode': '1'},
+        'status': {'code': '', 'message': ''},
+        'body': {'parkings': [parking.to_json() for parking in all_parkings]}
+    })
