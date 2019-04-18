@@ -247,6 +247,7 @@ class Order(db.Model):#订单
     def to_json(self):
         order = {
             'order_id':self.id,
+            'parking_id':self.parking_id,
             'parkin_time':self.parkin_time,
             'parkout_time':self.parkout_time,
             'money':self.pay_money,

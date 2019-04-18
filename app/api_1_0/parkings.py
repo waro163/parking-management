@@ -90,6 +90,8 @@ def parking_lock():
     except Exception as e:
         return alert(10002, 'the parking_id/order_id is wrong')
     _parking = ParkingS.query.get(_parking_id)
+    _order = _parking.orders.filter(Order.parkout_time.is_(None)).first()
+    print('order id',_order.id)
     _order = Order.query.get(_order_id)
     if not _parking:
         return alert(10009,'parking number is not exist')

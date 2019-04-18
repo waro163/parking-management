@@ -63,4 +63,4 @@ def login():
     _session_id = user.generate_session_token()
     db.session.commit()
     return jsonify({'head':{'resultCode':'1'},'status':{'code':'','message': ''},\
-                    'body':{'sessionId':_session_id, 'account':_account}})
+                    'body':{'session_id':_session_id, 'account':_account}})
