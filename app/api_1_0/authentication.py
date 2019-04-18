@@ -42,13 +42,13 @@ def before_request():
     g.current_user = AnonymousUser()
     g.head = {}
     g.body = {}
-    print('api before_request:', request.data)
-    print('api before_request:', request.json)
-    _request_head = request.form.get('head')
-    _request_body = request.form.get('body')
+    print('request.data:', request.data)
+    print('request.json:', request.json)
+    _request_head = request.json.get('head')
+    _request_body = request.json.get('body')
     print(_request_head,_request_body)
     if _request_head:
-        g.head = json.loads(_request_head)
+        g.head = _request_head
     if _request_body:
-        g.body = json.loads(_request_body)
+        g.body = _request_body
 
