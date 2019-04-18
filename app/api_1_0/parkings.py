@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from flask import jsonify, g, url_for, current_app
+from flask import jsonify, g, url_for, current_app, request
 from .. import db
 from ..models import ParkingS,Order
 from . import api
@@ -25,10 +25,27 @@ def get_parkings():
         'body': {'parkings': [parking.to_json() for parking in parkings]}
     })
 
-@api.route('/parkings/ping', methods = ['GET','POST'])
+@api.route('/parkings/ping', methods = ['POST'])
 def parkings_ping():
     try:
         _parking_id = int(g.body.get('parking_id'))
+    except Exception as e:
+        return alert(10002, 'the parking id is wrong')
+    _parking = ParkingS.query.get(_parking_id)
+    if not _parking:
+        return alert(10002,'the parking id is wrong')
+    _parking_status = _parking.ping()
+    db.session.commit()
+    return jsonify({
+        'head':{'resultCode':'1'},
+        'status':{'code':'','message': ''},
+        'body':{'parking_status':_parking_status}
+    })
+
+@api.route('/parking/ping', methods = ['GET'])
+def parkings_ping_get():
+    try:
+        _parking_id = int(request.args.get('parking_id'))
     except Exception as e:
         return alert(10002, 'the parking id is wrong')
     _parking = ParkingS.query.get(_parking_id)
